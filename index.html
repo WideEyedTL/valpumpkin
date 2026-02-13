@@ -43,18 +43,49 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // --- CONFIGURATION SECTION ---
+        // If you are hosting this on GitHub/Vercel, PASTE YOUR FIREBASE CONFIG HERE:
+            // Import the functions you need from the SDKs you need
+            import { initializeApp } from "firebase/app";
+            import { getAnalytics } from "firebase/analytics";
+            // TODO: Add SDKs for Firebase products that you want to use
+            // https://firebase.google.com/docs/web/setup#available-libraries
+
+            // Your web app's Firebase configuration
+            // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+            const firebaseConfig = {
+            apiKey: "AIzaSyBepI9pcayH2jduVrSO8V1nwX_Cz9FiDo0",
+            authDomain: "valpumpkin-1ba8a.firebaseapp.com",
+            projectId: "valpumpkin-1ba8a",
+            storageBucket: "valpumpkin-1ba8a.firebasestorage.app",
+            messagingSenderId: "1060022668696",
+            appId: "1:1060022668696:web:8bf02c4e6b3e7f704bafed",
+            measurementId: "G-CT5QZPWNQW"
+            };
+
+            // Initialize Firebase
+            const app = initializeApp(firebaAseConfig);
+            const analytics = getAnalytics(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         let auth = null;
         let db = null;
 
         try {
-            if (typeof __firebase_config !== 'undefined') {
-                const firebaseConfig = JSON.parse(__firebase_config);
+            let firebaseConfig = YOUR_FIREBASE_CONFIG;
+
+            // Fallback to internal config if not provided (for preview)
+            if (!firebaseConfig && typeof __firebase_config !== 'undefined') {
+                firebaseConfig = JSON.parse(__firebase_config);
+            }
+
+            if (firebaseConfig) {
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
+            } else {
+                console.warn("Firebase config is missing. Data will not be saved.");
             }
         } catch (e) {
             console.error("Firebase init failed:", e);
@@ -69,7 +100,8 @@
             onAuthStateChanged, 
             collection, 
             addDoc, 
-            getDocs, 
+            getDocs,
+            deleteDoc, 
             doc, 
             onSnapshot, 
             appId
@@ -83,54 +115,57 @@
         // --- Icons ---
         const Heart = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>;
         const Lock = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
-        const X = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>;
+        const X = ({className, onClick}) => <svg onClick={onClick} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>;
         const Flame = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.1.2-2.2.5-3.3.3-1.09.91-2.13 1.7-2.92.5 1.48 1.3 2.72 1.3 3.72Z"/></svg>;
+        const Trash = ({className, onClick}) => <svg onClick={onClick} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
+        const AlertCircle = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>;
 
         // --- Data ---
+        // Note: Using \u00A0 (non-breaking space) before emojis to prevent them from wrapping alone
         const QUESTIONS = [
             {
                 id: 1,
                 question: "If I showed up at your door right now... 😏",
                 options: [
-                    "Pull you straight to bed 😈",
-                    "Kiss you, no words needed 💋",
-                    "Never let you leave again 🥰"
+                    "Pull you straight to\u00A0bed\u00A0😈",
+                    "Kiss you, no words\u00A0needed\u00A0💋",
+                    "Never let you leave\u00A0again\u00A0🥰"
                 ]
             },
             {
                 id: 2,
                 question: "What do you miss most about me? 🤭",
                 options: [
-                    "Your touch 🫦",
-                    "Your scent on my pillow 😮‍💨",
-                    "Everything, honestly 💕"
+                    "Your\u00A0touch\u00A0🫦",
+                    "Your scent on my\u00A0pillow\u00A0😮‍💨",
+                    "Everything,\u00A0honestly\u00A0💕"
                 ]
             },
             {
                 id: 3,
                 question: "How do you want me tonight? 🔥",
                 options: [
-                    "Holding you tight 💪",
-                    "Whispering in your ear 😈",
-                    "You already know... 👀"
+                    "Holding you\u00A0tight\u00A0💪",
+                    "Whispering in your\u00A0ear\u00A0😈",
+                    "You already\u00A0know...\u00A0👀"
                 ]
             },
             {
                 id: 4,
                 question: "Our best memory together? 😘",
                 options: [
-                    "That late night together 🌙",
-                    "Our first kiss 💋",
-                    "Every single moment 💖"
+                    "That late night\u00A0together\u00A0🌙",
+                    "Our first\u00A0kiss\u00A0💋",
+                    "Every single\u00A0moment\u00A0💖"
                 ]
             },
             {
                 id: 5,
                 question: "One last thing baby... 😏🔥",
                 options: [
-                    "I'm yours forever ❤️",
-                    "Come find out 😈",
-                    "Just get here already 🫣"
+                    "I'm yours\u00A0forever\u00A0❤️",
+                    "Come find\u00A0out\u00A0😈",
+                    "Just get here\u00A0already\u00A0🫣"
                 ]
             }
         ];
@@ -146,24 +181,29 @@
             const [user, setUser] = useState(null);
             const [responses, setResponses] = useState([]);
             const [isSubmitting, setIsSubmitting] = useState(false);
+            const [dbConnected, setDbConnected] = useState(false);
 
             // --- Auth Init ---
             useEffect(() => {
                 // Poll for window.fb to be ready
                 const checkFb = setInterval(() => {
-                    if (window.fb && window.fb.auth) {
+                    if (window.fb) {
                         clearInterval(checkFb);
-                        const { auth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } = window.fb;
+                        setDbConnected(!!window.fb.db);
                         
-                        const initAuth = async () => {
-                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                await signInWithCustomToken(auth, __initial_auth_token);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
-                        };
-                        initAuth();
-                        onAuthStateChanged(auth, setUser);
+                        if (window.fb.auth) {
+                            const { auth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } = window.fb;
+                            
+                            const initAuth = async () => {
+                                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                    await signInWithCustomToken(auth, __initial_auth_token);
+                                } else {
+                                    await signInAnonymously(auth);
+                                }
+                            };
+                            initAuth();
+                            onAuthStateChanged(auth, setUser);
+                        }
                     }
                 }, 100);
                 return () => clearInterval(checkFb);
@@ -225,6 +265,22 @@
                 }
             };
 
+            const handleDeleteResponse = async (docId) => {
+                if (!window.confirm("Are you sure you want to delete this response?")) return;
+                
+                if (window.fb && window.fb.db) {
+                    const { db, doc, deleteDoc, appId } = window.fb;
+                    try {
+                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'valentine_responses', docId));
+                        // Update local state to remove the deleted item immediately
+                        setResponses(prev => prev.filter(r => r.id !== docId));
+                    } catch (error) {
+                        console.error("Delete failed:", error);
+                        alert("Failed to delete. Check console.");
+                    }
+                }
+            };
+
             const submitAnswers = async (finalAnswers) => {
                 setIsSubmitting(true);
                 if (user && window.fb && window.fb.db) {
@@ -238,7 +294,10 @@
                     } catch (error) {
                         console.error("Save failed:", error);
                     }
+                } else {
+                    console.warn("No DB connection - answers not saved.");
                 }
+                
                 setTimeout(() => {
                     setScreen('result');
                     setIsSubmitting(false);
@@ -315,12 +374,14 @@
                                     <button
                                         key={i}
                                         onClick={() => handleAnswer(opt)}
-                                        className="w-full text-left p-4 rounded-xl bg-white/90 hover:bg-white text-rose-900 font-semibold transition-all hover:pl-6 hover:shadow-lg transform active:scale-98 group"
+                                        className="w-full text-left p-4 rounded-xl bg-white/90 hover:bg-white text-rose-900 font-semibold transition-all hover:pl-6 hover:shadow-lg transform active:scale-98 group flex items-center"
                                     >
-                                        <span className="inline-block w-6 h-6 bg-rose-200 text-rose-600 rounded-full text-center text-sm mr-3 group-hover:bg-rose-500 group-hover:text-white transition-colors">
+                                        <span className="shrink-0 flex items-center justify-center w-8 h-8 bg-rose-200 text-rose-600 rounded-full text-center text-sm mr-3 group-hover:bg-rose-500 group-hover:text-white transition-colors">
                                             {String.fromCharCode(65 + i)}
                                         </span>
-                                        {opt}
+                                        <span className="flex-1">
+                                            {opt}
+                                        </span>
                                     </button>
                                 ))}
                             </div>
@@ -397,15 +458,37 @@
                             <h1 className="text-2xl font-bold flex items-center gap-2">
                                 <Lock className="w-6 h-6 text-pink-500" /> Cupid's Log
                             </h1>
-                            <button onClick={() => setScreen('intro')} className="text-slate-400 hover:text-white"><X /></button>
+                            <button onClick={() => setScreen('intro')} className="text-slate-400 hover:text-white cursor-pointer"><X /></button>
                         </div>
+
+                        {!dbConnected && (
+                            <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-4 mb-8 flex items-start gap-3">
+                                <AlertCircle className="w-6 h-6 text-yellow-500 shrink-0" />
+                                <div>
+                                    <h3 className="font-bold text-yellow-500">Database Not Connected</h3>
+                                    <p className="text-sm text-yellow-200/80 mt-1">
+                                        Answers cannot be saved or viewed. To fix this:
+                                        <br/>1. Create a project at <a href="https://console.firebase.google.com" target="_blank" className="underline">console.firebase.google.com</a>
+                                        <br/>2. Copy your "firebaseConfig"
+                                        <br/>3. Paste it into the `YOUR_FIREBASE_CONFIG` variable in this file.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="grid gap-6">
                             {responses.length === 0 ? (
                                 <div className="text-center text-slate-500 py-12">No responses yet, lover boy.</div>
                             ) : (
                                 responses.map((resp, idx) => (
-                                    <div key={resp.id || idx} className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                                    <div key={resp.id || idx} className="bg-slate-800 rounded-xl p-6 border border-slate-700 relative group">
+                                        <button 
+                                            onClick={() => handleDeleteResponse(resp.id)}
+                                            className="absolute top-4 right-4 text-slate-600 hover:text-red-500 transition-colors p-2 cursor-pointer"
+                                            title="Delete Response"
+                                        >
+                                            <Trash className="w-5 h-5" />
+                                        </button>
                                         <div className="text-xs text-slate-400 mb-4 border-b border-slate-700 pb-2">
                                             {new Date(resp.timestamp).toLocaleString()}
                                         </div>
