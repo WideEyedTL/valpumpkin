@@ -39,54 +39,6 @@
 <body>
     <div id="root"></div>
 
-    <!-- Firebase Setup -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- YOUR CONFIGURATION ---
-        const firebaseConfig = {
-          apiKey: "AIzaSyBepI9pcayH2jduVrSO8V1nwX_Cz9FiDo0",
-          authDomain: "valpumpkin-1ba8a.firebaseapp.com",
-          projectId: "valpumpkin-1ba8a",
-          storageBucket: "valpumpkin-1ba8a.firebasestorage.app",
-          messagingSenderId: "1060022668696",
-          appId: "1:1060022668696:web:8bf02c4e6b3e7f704bafed",
-          measurementId: "G-CT5QZPWNQW"
-        };
-
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        let auth = null;
-        let db = null;
-
-        try {
-            console.log("Attempting to initialize Firebase...");
-            const app = initializeApp(YOUR_FIREBASE_CONFIG);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            console.log("Firebase initialized successfully.");
-        } catch (e) {
-            console.error("Firebase init failed:", e);
-        }
-
-        // Expose Firebase to global scope for React
-        window.fb = {
-            auth, 
-            db, 
-            signInAnonymously, 
-            signInWithCustomToken, 
-            onAuthStateChanged, 
-            collection, 
-            addDoc, 
-            getDocs,
-            deleteDoc, 
-            doc, 
-            onSnapshot, 
-            appId
-        };
-    </script>
-
     <!-- React App -->
     <script type="text/babel">
         const { useState, useEffect } = React;
@@ -97,7 +49,7 @@
         const X = ({className, onClick}) => <svg onClick={onClick} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>;
         const Flame = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.1.2-2.2.5-3.3.3-1.09.91-2.13 1.7-2.92.5 1.48 1.3 2.72 1.3 3.72Z"/></svg>;
         const Trash = ({className, onClick}) => <svg onClick={onClick} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
-        const AlertCircle = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>;
+        const Send = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
 
         // --- Data ---
         const QUESTIONS = [
@@ -156,55 +108,25 @@
             const [noCount, setNoCount] = useState(0);
             const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
             const [answers, setAnswers] = useState({});
-            const [user, setUser] = useState(null);
             const [responses, setResponses] = useState([]);
             const [isSubmitting, setIsSubmitting] = useState(false);
-            const [dbConnected, setDbConnected] = useState(false);
 
-            // --- Auth Init ---
+            // --- Admin Data Fetch (Local Storage) ---
             useEffect(() => {
-                // Poll for window.fb to be ready
-                const checkFb = setInterval(() => {
-                    if (window.fb) {
-                        clearInterval(checkFb);
-                        setDbConnected(!!window.fb.db);
-                        
-                        if (window.fb.auth) {
-                            const { auth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } = window.fb;
-                            
-                            const initAuth = async () => {
-                                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                    await signInWithCustomToken(auth, __initial_auth_token);
-                                } else {
-                                    await signInAnonymously(auth);
-                                }
-                            };
-                            initAuth();
-                            onAuthStateChanged(auth, setUser);
+                if (screen === 'admin') {
+                    const saved = localStorage.getItem('val_responses');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            // Sort by new
+                            parsed.sort((a, b) => b.timestamp - a.timestamp);
+                            setResponses(parsed);
+                        } catch (e) {
+                            console.error("Error reading local storage", e);
                         }
                     }
-                }, 100);
-                return () => clearInterval(checkFb);
-            }, []);
-
-            // --- Admin Data Fetch ---
-            useEffect(() => {
-                if (screen === 'admin' && user && window.fb && window.fb.db) {
-                    const { db, collection, getDocs, appId } = window.fb;
-                    const fetchResponses = async () => {
-                        try {
-                            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'valentine_responses');
-                            const snapshot = await getDocs(colRef);
-                            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                            data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                            setResponses(data);
-                        } catch (error) {
-                            console.error("Error fetching responses:", error);
-                        }
-                    };
-                    fetchResponses();
                 }
-            }, [screen, user]);
+            }, [screen]);
 
             // --- Handlers ---
             const handleNoHover = () => {
@@ -243,43 +165,43 @@
                 }
             };
 
-            const handleDeleteResponse = async (docId) => {
+            const handleDeleteResponse = (timestamp) => {
                 if (!window.confirm("Are you sure you want to delete this response?")) return;
                 
-                if (window.fb && window.fb.db) {
-                    const { db, doc, deleteDoc, appId } = window.fb;
-                    try {
-                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'valentine_responses', docId));
-                        // Update local state to remove the deleted item immediately
-                        setResponses(prev => prev.filter(r => r.id !== docId));
-                    } catch (error) {
-                        console.error("Delete failed:", error);
-                        alert("Failed to delete. Check console.");
-                    }
-                }
+                const updated = responses.filter(r => r.timestamp !== timestamp);
+                setResponses(updated);
+                localStorage.setItem('val_responses', JSON.stringify(updated));
             };
 
-            const submitAnswers = async (finalAnswers) => {
+            const submitAnswers = (finalAnswers) => {
                 setIsSubmitting(true);
-                if (user && window.fb && window.fb.db) {
-                    const { db, collection, addDoc, appId } = window.fb;
-                    try {
-                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'valentine_responses'), {
-                            answers: finalAnswers,
-                            timestamp: Date.now(),
-                            userId: user.uid
-                        });
-                    } catch (error) {
-                        console.error("Save failed:", error);
-                    }
-                } else {
-                    console.warn("No DB connection - answers not saved.");
-                }
+                
+                // SAVE TO LOCAL STORAGE (On her device)
+                const newResponse = {
+                    answers: finalAnswers,
+                    timestamp: Date.now()
+                };
+                
+                const existing = localStorage.getItem('val_responses');
+                let data = existing ? JSON.parse(existing) : [];
+                data.push(newResponse);
+                localStorage.setItem('val_responses', JSON.stringify(data));
                 
                 setTimeout(() => {
                     setScreen('result');
                     setIsSubmitting(false);
                 }, 1500);
+            };
+
+            const sendViaWhatsApp = () => {
+                let text = "Hey babe! 💖 Here are my answers:\n\n";
+                Object.entries(answers).forEach(([q, a]) => {
+                    text += `*${q}*\n👉 ${a}\n\n`;
+                });
+                text += "Can't wait! 😘";
+                
+                const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                window.open(url, '_blank');
             };
 
             // --- Renderers ---
@@ -381,8 +303,19 @@
                         ></iframe>
                     </div>
                     
-                    <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20">
-                        <p className="text-pink-200">Your answers have been sent to my heart (and my phone).</p>
+                    <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20 space-y-4">
+                        <div>
+                            <p className="text-pink-200 text-lg">Your answers have been saved! 💌</p>
+                            <p className="text-white/60 text-sm mt-2">I'll check them on this device later, or...</p>
+                        </div>
+                        
+                        <button 
+                            onClick={sendViaWhatsApp}
+                            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-transform transform active:scale-95 shadow-lg"
+                        >
+                            <Send className="w-5 h-5" />
+                            Send to Him via WhatsApp
+                        </button>
                     </div>
 
                     <button 
@@ -434,34 +367,23 @@
                     <div className="max-w-4xl mx-auto">
                         <div className="flex justify-between items-center mb-8">
                             <h1 className="text-2xl font-bold flex items-center gap-2">
-                                <Lock className="w-6 h-6 text-pink-500" /> Cupid's Log
+                                <Lock className="w-6 h-6 text-pink-500" /> Cupid's Log (Local)
                             </h1>
                             <button onClick={() => setScreen('intro')} className="text-slate-400 hover:text-white cursor-pointer"><X /></button>
                         </div>
-
-                        {!dbConnected && (
-                            <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-4 mb-8 flex items-start gap-3">
-                                <AlertCircle className="w-6 h-6 text-yellow-500 shrink-0" />
-                                <div>
-                                    <h3 className="font-bold text-yellow-500">Database Not Connected</h3>
-                                    <p className="text-sm text-yellow-200/80 mt-1">
-                                        Answers cannot be saved or viewed. To fix this:
-                                        <br/>1. Create a project at <a href="https://console.firebase.google.com" target="_blank" className="underline">console.firebase.google.com</a>
-                                        <br/>2. Copy your "firebaseConfig"
-                                        <br/>3. Paste it into the `YOUR_FIREBASE_CONFIG` variable in this file.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
+                        
+                        <p className="text-slate-500 mb-6 text-sm">
+                            Showing responses saved on this specific device/browser.
+                        </p>
 
                         <div className="grid gap-6">
                             {responses.length === 0 ? (
-                                <div className="text-center text-slate-500 py-12">No responses yet, lover boy.</div>
+                                <div className="text-center text-slate-500 py-12">No responses yet on this device.</div>
                             ) : (
                                 responses.map((resp, idx) => (
-                                    <div key={resp.id || idx} className="bg-slate-800 rounded-xl p-6 border border-slate-700 relative group">
+                                    <div key={resp.timestamp || idx} className="bg-slate-800 rounded-xl p-6 border border-slate-700 relative group">
                                         <button 
-                                            onClick={() => handleDeleteResponse(resp.id)}
+                                            onClick={() => handleDeleteResponse(resp.timestamp)}
                                             className="absolute top-4 right-4 text-slate-600 hover:text-red-500 transition-colors p-2 cursor-pointer"
                                             title="Delete Response"
                                         >
@@ -499,7 +421,7 @@
                     {isSubmitting ? (
                         <div className="flex flex-col items-center justify-center min-h-screen">
                             <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
-                            <p className="text-white text-xl animate-pulse">Sending your love...</p>
+                            <p className="text-white text-xl animate-pulse">Saving your love...</p>
                         </div>
                     ) : (
                         <>
