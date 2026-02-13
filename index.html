@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Will You Be My Valentine?</title>
+    
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'fade-in': 'fadeIn 1s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@300;400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Playfair Display', serif; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- Firebase Setup -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        let auth = null;
+        let db = null;
+
+        try {
+            if (typeof __firebase_config !== 'undefined') {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+            }
+        } catch (e) {
+            console.error("Firebase init failed:", e);
+        }
+
+        // Expose Firebase to global scope for React
+        window.fb = {
+            auth, 
+            db, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged, 
+            collection, 
+            addDoc, 
+            getDocs, 
+            doc, 
+            onSnapshot, 
+            appId
+        };
+    </script>
+
+    <!-- React App -->
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Icons ---
+        const Heart = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>;
+        const Lock = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+        const X = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>;
+        const Flame = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.1.2-2.2.5-3.3.3-1.09.91-2.13 1.7-2.92.5 1.48 1.3 2.72 1.3 3.72Z"/></svg>;
+
+        // --- Data ---
+        const QUESTIONS = [
+            {
+                id: 1,
+                question: "If I showed up at your door right now... 😏",
+                options: [
+                    "Pull you straight to bed 😈",
+                    "Kiss you, no words needed 💋",
+                    "Never let you leave again 🥰"
+                ]
+            },
+            {
+                id: 2,
+                question: "What do you miss most about me? 🤭",
+                options: [
+                    "Your touch 🫦",
+                    "Your scent on my pillow 😮‍💨",
+                    "Everything, honestly 💕"
+                ]
+            },
+            {
+                id: 3,
+                question: "How do you want me tonight? 🔥",
+                options: [
+                    "Holding you tight 💪",
+                    "Whispering in your ear 😈",
+                    "You already know... 👀"
+                ]
+            },
+            {
+                id: 4,
+                question: "Our best memory together? 😘",
+                options: [
+                    "That late night together 🌙",
+                    "Our first kiss 💋",
+                    "Every single moment 💖"
+                ]
+            },
+            {
+                id: 5,
+                question: "One last thing baby... 😏🔥",
+                options: [
+                    "I'm yours forever ❤️",
+                    "Come find out 😈",
+                    "Just get here already 🫣"
+                ]
+            }
+        ];
+
+        function App() {
+            const [screen, setScreen] = useState('intro');
+            const [showAdminLogin, setShowAdminLogin] = useState(false);
+            const [passwordInput, setPasswordInput] = useState('');
+            const [noBtnPosition, setNoBtnPosition] = useState({ x: 0, y: 0 });
+            const [noCount, setNoCount] = useState(0);
+            const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+            const [answers, setAnswers] = useState({});
+            const [user, setUser] = useState(null);
+            const [responses, setResponses] = useState([]);
+            const [isSubmitting, setIsSubmitting] = useState(false);
+
+            // --- Auth Init ---
+            useEffect(() => {
+                // Poll for window.fb to be ready
+                const checkFb = setInterval(() => {
+                    if (window.fb && window.fb.auth) {
+                        clearInterval(checkFb);
+                        const { auth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } = window.fb;
+                        
+                        const initAuth = async () => {
+                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                await signInWithCustomToken(auth, __initial_auth_token);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        };
+                        initAuth();
+                        onAuthStateChanged(auth, setUser);
+                    }
+                }, 100);
+                return () => clearInterval(checkFb);
+            }, []);
+
+            // --- Admin Data Fetch ---
+            useEffect(() => {
+                if (screen === 'admin' && user && window.fb && window.fb.db) {
+                    const { db, collection, getDocs, appId } = window.fb;
+                    const fetchResponses = async () => {
+                        try {
+                            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'valentine_responses');
+                            const snapshot = await getDocs(colRef);
+                            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                            setResponses(data);
+                        } catch (error) {
+                            console.error("Error fetching responses:", error);
+                        }
+                    };
+                    fetchResponses();
+                }
+            }, [screen, user]);
+
+            // --- Handlers ---
+            const handleNoHover = () => {
+                if (noCount < 5) {
+                    const x = (Math.random() - 0.5) * 200;
+                    const y = (Math.random() - 0.5) * 200;
+                    setNoBtnPosition({ x, y });
+                    setNoCount(prev => prev + 1);
+                }
+            };
+
+            const handleNoClick = () => setNoCount(10);
+            
+            const handleSecretClick = () => setShowAdminLogin(true);
+            
+            const handleLoginSubmit = (e) => {
+                e.preventDefault();
+                if (passwordInput === '1234') {
+                    setScreen('admin');
+                    setShowAdminLogin(false);
+                    setPasswordInput('');
+                } else {
+                    alert("Wrong password!");
+                    setPasswordInput('');
+                }
+            };
+
+            const handleAnswer = (answer) => {
+                const newAnswers = { ...answers, [QUESTIONS[currentQuestionIdx].question]: answer };
+                setAnswers(newAnswers);
+
+                if (currentQuestionIdx < QUESTIONS.length - 1) {
+                    setCurrentQuestionIdx(prev => prev + 1);
+                } else {
+                    submitAnswers(newAnswers);
+                }
+            };
+
+            const submitAnswers = async (finalAnswers) => {
+                setIsSubmitting(true);
+                if (user && window.fb && window.fb.db) {
+                    const { db, collection, addDoc, appId } = window.fb;
+                    try {
+                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'valentine_responses'), {
+                            answers: finalAnswers,
+                            timestamp: Date.now(),
+                            userId: user.uid
+                        });
+                    } catch (error) {
+                        console.error("Save failed:", error);
+                    }
+                }
+                setTimeout(() => {
+                    setScreen('result');
+                    setIsSubmitting(false);
+                }, 1500);
+            };
+
+            // --- Renderers ---
+
+            const renderIntro = () => (
+                <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center space-y-8 animate-fade-in">
+                    <div className="relative">
+                        <Heart className="w-32 h-32 text-red-500 animate-pulse fill-red-500 drop-shadow-lg" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-white font-bold text-xl">?</span>
+                        </div>
+                    </div>
+                    
+                    <h1 className="text-4xl md:text-6xl font-black text-white drop-shadow-md font-serif">
+                        Will you be my<br />
+                        <span className="text-pink-200 italic">Valentine?</span>
+                    </h1>
+
+                    <div className="flex flex-col md:flex-row gap-6 items-center justify-center h-32 relative w-full max-w-md">
+                        <button
+                            onClick={() => setScreen('quiz')}
+                            className="px-8 py-4 bg-white text-red-600 font-bold rounded-full text-xl shadow-xl hover:scale-110 transition-transform transform active:scale-95 border-b-4 border-red-200"
+                        >
+                            YES, I will! 💖
+                        </button>
+
+                        {noCount < 5 ? (
+                            <button
+                                onMouseEnter={handleNoHover}
+                                onClick={handleNoClick}
+                                style={{ transform: `translate(${noBtnPosition.x}px, ${noBtnPosition.y}px)` }}
+                                className="px-8 py-4 bg-gray-800 text-gray-300 font-bold rounded-full text-xl shadow-xl transition-all duration-200 hover:bg-gray-900 border-b-4 border-gray-900"
+                            >
+                                No
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => setScreen('quiz')}
+                                className="px-8 py-4 bg-pink-400 text-white font-bold rounded-full text-xl shadow-xl hover:scale-110 transition-transform transform animate-bounce border-b-4 border-pink-600"
+                            >
+                                YES (Obviously) 😏
+                            </button>
+                        )}
+                    </div>
+
+                    {noCount >= 5 && (
+                        <p className="text-white font-medium animate-pulse text-lg mt-4">
+                            There is only one answer, baby...
+                        </p>
+                    )}
+                </div>
+            );
+
+            const renderQuiz = () => {
+                const q = QUESTIONS[currentQuestionIdx];
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen p-4 max-w-2xl mx-auto w-full">
+                        <div className="w-full bg-white/10 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/20 animate-fade-in">
+                            <div className="flex justify-between items-center mb-6">
+                                <span className="text-pink-200 font-mono text-sm">QUESTION {currentQuestionIdx + 1}/{QUESTIONS.length}</span>
+                                <Flame className="text-orange-400 w-6 h-6 animate-pulse" />
+                            </div>
+
+                            <h2 className="text-2xl md:text-3xl font-bold text-white mb-8 leading-tight">
+                                {q.question}
+                            </h2>
+
+                            <div className="space-y-4">
+                                {q.options.map((opt, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => handleAnswer(opt)}
+                                        className="w-full text-left p-4 rounded-xl bg-white/90 hover:bg-white text-rose-900 font-semibold transition-all hover:pl-6 hover:shadow-lg transform active:scale-98 group"
+                                    >
+                                        <span className="inline-block w-6 h-6 bg-rose-200 text-rose-600 rounded-full text-center text-sm mr-3 group-hover:bg-rose-500 group-hover:text-white transition-colors">
+                                            {String.fromCharCode(65 + i)}
+                                        </span>
+                                        {opt}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const renderResult = () => (
+                <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center space-y-6 animate-fade-in">
+                    <div className="w-full max-w-3xl bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-white/20 aspect-video relative">
+                        <iframe 
+                            className="absolute top-0 left-0 w-full h-full"
+                            src="https://www.youtube.com/embed/2Vv-BfVoq4g?autoplay=1&controls=0&start=3" 
+                            title="Perfect - Ed Sheeran" 
+                            frameBorder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowFullScreen
+                        ></iframe>
+                    </div>
+                    
+                    <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20">
+                        <p className="text-pink-200">Your answers have been sent to my heart (and my phone).</p>
+                    </div>
+
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="text-white/50 hover:text-white text-sm mt-8 underline"
+                    >
+                        Replay
+                    </button>
+                </div>
+            );
+
+            const renderAdminLogin = () => (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <Lock className="w-5 h-5 text-pink-500" /> Admin Access
+                        </h3>
+                        <form onSubmit={handleLoginSubmit} className="space-y-4">
+                            <input 
+                                type="password" 
+                                value={passwordInput}
+                                onChange={(e) => setPasswordInput(e.target.value)}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none text-gray-900 font-mono text-center text-lg"
+                                placeholder="Enter Code"
+                                autoFocus
+                            />
+                            <div className="flex gap-2">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowAdminLogin(false)} 
+                                    className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="flex-1 bg-pink-500 text-white py-3 rounded-xl font-bold hover:bg-pink-600 transition-colors shadow-lg"
+                                >
+                                    Unlock
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+
+            const renderAdmin = () => (
+                <div className="min-h-screen bg-slate-900 p-8 text-white animate-fade-in">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="flex justify-between items-center mb-8">
+                            <h1 className="text-2xl font-bold flex items-center gap-2">
+                                <Lock className="w-6 h-6 text-pink-500" /> Cupid's Log
+                            </h1>
+                            <button onClick={() => setScreen('intro')} className="text-slate-400 hover:text-white"><X /></button>
+                        </div>
+
+                        <div className="grid gap-6">
+                            {responses.length === 0 ? (
+                                <div className="text-center text-slate-500 py-12">No responses yet, lover boy.</div>
+                            ) : (
+                                responses.map((resp, idx) => (
+                                    <div key={resp.id || idx} className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                                        <div className="text-xs text-slate-400 mb-4 border-b border-slate-700 pb-2">
+                                            {new Date(resp.timestamp).toLocaleString()}
+                                        </div>
+                                        <div className="space-y-3">
+                                            {Object.entries(resp.answers || {}).map(([q, a], i) => (
+                                                <div key={i}>
+                                                    <p className="text-xs text-pink-400 uppercase font-bold tracking-wider">{q}</p>
+                                                    <p className="text-lg text-slate-200">{a}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // --- Main Layout ---
+            if (screen === 'admin') return renderAdmin();
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-rose-500 via-pink-600 to-purple-700 font-sans selection:bg-pink-300 selection:text-rose-900 overflow-hidden relative">
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute top-10 left-10 w-32 h-32 bg-white rounded-full mix-blend-overlay filter blur-3xl opacity-20 animate-pulse"></div>
+                        <div className="absolute bottom-10 right-10 w-64 h-64 bg-pink-300 rounded-full mix-blend-overlay filter blur-3xl opacity-20"></div>
+                    </div>
+
+                    {isSubmitting ? (
+                        <div className="flex flex-col items-center justify-center min-h-screen">
+                            <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
+                            <p className="text-white text-xl animate-pulse">Sending your love...</p>
+                        </div>
+                    ) : (
+                        <>
+                            {screen === 'intro' && renderIntro()}
+                            {screen === 'quiz' && renderQuiz()}
+                            {screen === 'result' && renderResult()}
+                        </>
+                    )}
+
+                    {showAdminLogin && renderAdminLogin()}
+
+                    <button 
+                        onClick={handleSecretClick}
+                        className="fixed bottom-2 right-2 p-2 text-white/10 hover:text-white/50 transition-colors z-50"
+                        title="Cupid's Log"
+                    >
+                        <Lock className="w-4 h-4" />
+                    </button>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
