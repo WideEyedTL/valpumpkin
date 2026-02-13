@@ -45,16 +45,15 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CONFIGURATION SECTION ---
-        // I have cleaned up your config here. This is the correct format for this file:
-        const YOUR_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyBepI9pcayH2jduVrSO8V1nwX_Cz9FiDo0",
-            authDomain: "valpumpkin-1ba8a.firebaseapp.com",
-            projectId: "valpumpkin-1ba8a",
-            storageBucket: "valpumpkin-1ba8a.firebasestorage.app",
-            messagingSenderId: "1060022668696",
-            appId: "1:1060022668696:web:8bf02c4e6b3e7f704bafed",
-            measurementId: "G-CT5QZPWNQW"
+        // --- YOUR CONFIGURATION ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyBepI9pcayH2jduVrSO8V1nwX_Cz9FiDo0",
+          authDomain: "valpumpkin-1ba8a.firebaseapp.com",
+          projectId: "valpumpkin-1ba8a",
+          storageBucket: "valpumpkin-1ba8a.firebasestorage.app",
+          messagingSenderId: "1060022668696",
+          appId: "1:1060022668696:web:8bf02c4e6b3e7f704bafed",
+          measurementId: "G-CT5QZPWNQW"
         };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -62,20 +61,11 @@
         let db = null;
 
         try {
-            let firebaseConfig = YOUR_FIREBASE_CONFIG;
-
-            // Fallback to internal config if not provided (for preview)
-            if (!firebaseConfig && typeof __firebase_config !== 'undefined') {
-                firebaseConfig = JSON.parse(__firebase_config);
-            }
-
-            if (firebaseConfig) {
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-            } else {
-                console.warn("Firebase config is missing. Data will not be saved.");
-            }
+            console.log("Attempting to initialize Firebase...");
+            const app = initializeApp(YOUR_FIREBASE_CONFIG);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            console.log("Firebase initialized successfully.");
         } catch (e) {
             console.error("Firebase init failed:", e);
         }
@@ -110,7 +100,6 @@
         const AlertCircle = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>;
 
         // --- Data ---
-        // Note: Using \u00A0 (non-breaking space) before emojis to prevent them from wrapping alone
         const QUESTIONS = [
             {
                 id: 1,
